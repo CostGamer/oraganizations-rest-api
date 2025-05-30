@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgis/postgis:latest
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: organizations_db
+    container_name: backend_container_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_postgis.sql:/docker-entrypoint-initdb.d/init_postgis.sql  
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend_container
+    ports:
+      - "${UVICORN_PORT}:${UVICORN_PORT}" 
+    volumes:
+      - .:/organizations_backend  
+    env_file:
+      - .env
+    depends_on:
+      - db
+    command: >
+      sh -c "
+      alembic upgrade head &&
+      uvicorn --factory src.main:setup_app --host ${UVICORN_HOST} --port ${UVICORN_PORT}
+      "
+
+volumes:
+  postgres_data:
