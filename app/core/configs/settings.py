@@ -4,6 +4,24 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 
+def load_dotenv(path: str | Path) -> None:
+    path = Path(path)
+    if not path.exists():
+        return
+    with path.open(mode="r", encoding="utf-8") as file:
+        for line in file:
+            if line.startswith("#") or line.strip() == "":
+                continue
+            try:
+                key, value = line.strip().split("=", maxsplit=1)
+                env.setdefault(key, value)
+            except ValueError:
+                print(f"Invalid line in .env file: {line.strip()}")
+
+
+load_dotenv(".env")
+
+
 class APISettings(BaseModel):
     host: str = Field(default="0.0.0.0", alias="UVICORN_HOST")
     port: int = Field(default=8000, alias="UVICORN_PORT")
@@ -47,21 +65,3 @@ class Settings(BaseModel):
     database: DatabaseSettings = Field(default_factory=lambda: DatabaseSettings(**env))
     logging: LoggingSettings = Field(default_factory=lambda: LoggingSettings(**env))
     different: OtherSettings = Field(default_factory=lambda: OtherSettings(**env))
-
-
-def load_dotenv(path: str | Path) -> None:
-    path = Path(path)
-    if not path.exists():
-        return
-    with path.open(mode="r", encoding="utf-8") as file:
-        for line in file:
-            if line.startswith("#") or line.strip() == "":
-                continue
-            try:
-                key, value = line.strip().split("=", maxsplit=1)
-                env.setdefault(key, value)
-            except ValueError:
-                print(f"Invalid line in .env file: {line.strip()}")
-
-
-load_dotenv(".env")

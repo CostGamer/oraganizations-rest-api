@@ -1,35 +1,50 @@
+version: '3.8'
+
 services:
   db:
-    image: postgis/postgis:latest
+    image: postgis/postgis:15-3.3
+    platform: linux/amd64
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: organizations_db
+      POSTGRES_DB: db
+      POSTGRES_HOST_AUTH_METHOD: trust
     container_name: backend_container_db
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init_postgis.sql:/docker-entrypoint-initdb.d/init_postgis.sql  
+      - ./init_postgis.sql:/docker-entrypoint-initdb.d/init_postgis.sql
+      # - ./test_data.sql:/docker-entrypoint-initdb.d/test_data.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  backend:
+  backend_organizations:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: backend_container
+    platform: linux/amd64
+    container_name: backend_organizations_container
     ports:
-      - "${UVICORN_PORT}:${UVICORN_PORT}" 
+      - "${UVICORN_PORT:-8000}:${UVICORN_PORT:-8000}"
     volumes:
-      - .:/organizations_backend  
+      - .:/organizations
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     command: >
       sh -c "
-      alembic upgrade head &&
-      uvicorn --factory src.main:setup_app --host ${UVICORN_HOST} --port ${UVICORN_PORT}
+        echo 'Waiting for database...' &&
+        sleep 10 &&
+        alembic upgrade head &&
+        uvicorn --factory app.main:setup_app --host ${UVICORN_HOST:-0.0.0.0} --port ${UVICORN_PORT:-8000} --reload
       "
+    restart: unless-stopped
 
 volumes:
   postgres_data:

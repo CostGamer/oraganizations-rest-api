@@ -1,19 +1,19 @@
-import geoalchemy2
+"""first
 
-"""0001
-
-Revision ID: 070ff82e2d77
+Revision ID: 8bfc6c7fff9b
 Revises:
-Create Date: 2025-01-09 22:35:36.830008
+Create Date: 2025-05-31 17:53:30.544447
 
 """
+
 from typing import Sequence, Union
 
+import geoalchemy2
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "070ff82e2d77"
+revision: str = "8bfc6c7fff9b"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -50,9 +50,12 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    if not op.get_bind().dialect.has_index(
-        op.get_bind(), "buildings", "idx_buildings_location"
-    ):
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    indexes = inspector.get_indexes("buildings")
+    idx_exists = any(idx["name"] == "idx_buildings_location" for idx in indexes)
+
+    if not idx_exists:
         op.create_index(
             "idx_buildings_location",
             "buildings",

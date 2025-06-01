@@ -1,25 +1,26 @@
 from logging import getLogger
 
+from dishka.integrations.fastapi import setup_dishka
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 
-from app.api.exceptions import (
+from app.api.exception_responses.exceptions import (
     address_not_exists_error,
     many_tokens_error,
     organization_not_exists_error,
     user_has_no_tokens_error,
 )
-from app.api.routers.organization_routes import organization_router
-from app.api.routers.token_routes import token_router
-from app.core import all_settings
+from app.api.v1.controllers import organization_router, token_router
+from app.core.configs import all_settings, db_connection
 from app.core.custom_exceptions import (
     AddressNotFoundError,
     AlreadyManyTokensError,
     OrganizationNotFoundError,
     UserHasNoTokensError,
 )
-from app.core.logs import init_logger
+from app.core.utils import init_logger
+from app.dependencies.container import container
 from app.middleware.check_token_valid import CheckTokenMiddleware
 from app.middleware.logger import LoggerMiddleware
 
@@ -65,7 +66,9 @@ def setup_app() -> FastAPI:
                     Supports location-based search, activity classification, and advanced filtering",
         version="0.1.0",
     )
+    app.state.db_connection = db_connection
     init_logger(all_settings.logging)
+    setup_dishka(app=app, container=container)
     init_routers(app)
     init_middlewares(app)
     register_exception_handlers(app)

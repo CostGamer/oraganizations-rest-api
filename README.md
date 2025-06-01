@@ -10,8 +10,8 @@
 
 ### Работа с токенами
 Для работы с API требуется наличие токена, который можно получить с помощью следующих методов:  
-- **POST** `/issue_token` — запрос на выдачу нового токена.  
-- **GET** `/get_all_tokens` — получение списка всех выданных токенов.  
+- **POST** `/issue` — запрос на выдачу нового токена.  
+- **GET** `/tokens` — получение списка всех выданных токенов.  
 
 #### Ограничения
 - Максимальное количество активных токенов на одного пользователя: **5**.  
@@ -37,7 +37,7 @@
    Для начала клонируйте репозиторий:
 
    ```bash
-   git clone https://github.com/CostGamer/org_catalog.git
+   git clone https://github.com/CostGamer/oraganizations-rest-api.git
    cd org_catalog
    ```
 
@@ -143,25 +143,42 @@
 ## Структура проекта
 
 ```bash
-├── src                     # Основной каталог с исходным кодом
-│   ├── api                 # Маршруты FastAPI и зависимости
-│   ├── core                # Общие зависимости
-│   ├── DB                  # Работа с базой данных
-│   │   └── migrations      # Alembic миграции
-│   ├── middleware          # Пользовательские middleware
-│   ├── repositories        # Репозитории для работы с БД
-│   ├── services            # Бизнес-логика
-│   └── main.py             # Точка входа FastAPI приложения
-├── tests                   # Тесты
-├── .env.example            # Пример конфигурации окружения
-├── .github/workflows       # CI/CD пайплайны
-├── .pre-commit-config.yaml # Конфигурация pre-commit хуков
-├── docker-compose.yml      
-├── Dockerfile              
-├── poetry.lock             # Файл блокировки Poetry
-├── pyproject.toml          # Конфигурация Poetry
-├── test_data.sql           # Тестовые данные
-└── start.sh                # Скрипт для локального запуска
+├── app/                           # Основной каталог приложения
+│   ├── __init__.py
+│   ├── main.py                    # Точка входа FastAPI приложения
+│   ├── api/                       # API маршруты
+│   │   ├── exception_responses/   # Обработчики исключений
+│   │   └── v1/                    # API версии 1
+│   │       └── controllers/       # Контроллеры маршрутов
+│   ├── core/                      # Основные конфигурации и утилиты
+│   │   ├── configs/               # Конфигурации
+│   │   ├── models/                # SQLAlchemy & Pydantic модели
+│   │   ├── schemas/               # Protocols
+│   │   ├── utils.py               # Утилиты
+│   │   └── custom_exceptions.py   # Пользовательские исключения
+│   ├── dependencies/              # Dependency Injection
+│   ├── middleware/                # Middleware
+│   ├── repositories/              # Репозитории для работы с БД
+│   └── services/                  # Бизнес-логика
+├── migrations/                    # Alembic миграции
+│   └── versions/
+├── tests/                         # Тесты
+├── .env                          # Переменные окружения
+├── .env.example                  # Пример конфигурации
+├── .gitignore                    # Git ignore файл
+├── .pre-commit-config.yaml       # Pre-commit конфигурация
+├── alembic.ini                   # Конфигурация Alembic
+├── app.log                       # Лог файл
+├── docker-compose.yml            # Docker Compose
+├── Dockerfile                    # Docker образ
+├── init_postgis.sql              # Инициализация PostGIS
+├── poetry.lock                   # Poetry lock файл
+├── pyproject.toml                # Poetry конфигурация
+├── py.typed                      # Типизация Python
+├── README.md                     # Документация проекта
+├── start.sh                      # Скрипт запуска
+├── test_data.sql                 # Тестовые данные
+└── test-task.md                  # Описание задачи
 ```
 
 ## Контакты

@@ -8,22 +8,12 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.core import all_settings
+from app.core.configs import all_settings
 from app.main import setup_app
 
 
 @pytest.fixture(scope="session")
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
-    """Fixture to initialize an AsyncClient instance for testing.
-
-    Sets up the FastAPI app and creates an asynchronous test client to interact
-    with the app during tests. The client will be used in tests for sending
-    requests to the test server.
-
-    Yields:
-        AsyncClient: An instance of the AsyncClient for making asynchronous
-        HTTP requests to the FastAPI application.
-    """
     app = setup_app()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
@@ -32,15 +22,6 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture(scope="session")
 async def async_engine() -> AsyncIterator[AsyncEngine]:
-    """Fixture to create and dispose of an async database engine.
-
-    Initializes the database engine using the provided database URI, and
-    ensures it is disposed of after the test session is complete.
-
-    Yields:
-        AsyncEngine: The database engine to be used for executing asynchronous
-        database operations during testing.
-    """
     engine = create_async_engine(
         all_settings.database.db_uri, echo=True, future=True, poolclass=NullPool
     )
@@ -50,21 +31,13 @@ async def async_engine() -> AsyncIterator[AsyncEngine]:
 
 @pytest.fixture(scope="session")
 async def register_token(async_client: AsyncClient) -> AsyncGenerator[str, None]:
-    """Fixture to issue and retrieve a new token for authentication.
-
-    Generates a random login, issues a token by calling the appropriate endpoint,
-    and returns the login used for token registration.
-
-    Yields:
-        str: The randomly generated login associated with the issued token.
-    """
     random_login = "".join(
         random.choice(string.ascii_letters + string.digits) for _ in range(10)
     )
     token_issue_data = {"login": random_login}
 
     login_response = await async_client.post(
-        "/api_token/issue_token", params=token_issue_data
+        "/api_token/issue", params=token_issue_data
     )
 
     assert login_response.status_code == 200, (
@@ -79,16 +52,8 @@ async def register_token(async_client: AsyncClient) -> AsyncGenerator[str, None]
 async def authenticated_token(
     async_client: AsyncClient, register_token: str
 ) -> AsyncGenerator[str, None]:
-    """Fixture to retrieve an authenticated API token for further use in tests.
-
-    Uses the provided login to retrieve an API token and ensures the token
-    is valid by checking the response.
-
-    Yields:
-        str: The API key token for authentication in subsequent requests.
-    """
     login_response = await async_client.get(
-        "/api_token/get_all_tokens", params={"login": register_token}
+        "/api_token/tokens", params={"login": register_token}
     )
 
     assert login_response.status_code == 200, (
@@ -110,13 +75,5 @@ async def authenticated_token(
 async def set_auth_headers(
     async_client: AsyncClient, authenticated_token: str
 ) -> AsyncGenerator[AsyncClient, None]:
-    """Fixture to set the Authorization header for authenticated requests.
-
-    Adds the bearer token to the Authorization header of the AsyncClient
-    instance, ensuring that subsequent requests use the authenticated token.
-
-    Yields:
-        AsyncClient: The AsyncClient instance with the Authorization header set.
-    """
     async_client.headers.update({"Authorization": f"Bearer {authenticated_token}"})
     yield async_client

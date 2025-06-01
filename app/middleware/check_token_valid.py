@@ -6,9 +6,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from app.api.dependencies import get_token_repo
 from app.core.custom_exceptions import MissingOrBadTokenError, TheLimitExceededError
-from app.DB import get_db
+from app.repositories.token_repo import TokenRepo
 
 
 class CheckTokenMiddleware(BaseHTTPMiddleware):
@@ -21,18 +20,6 @@ class CheckTokenMiddleware(BaseHTTPMiddleware):
 
     Excluded paths such as '/docs', '/openapi.json' and '/api_token' are
     bypassed, meaning the token validation is not applied to these routes.
-
-    Args:
-        app (ASGIApp): The ASGI application to wrap.
-
-    Attributes:
-        excluded_paths (list): A list of paths that are excluded from token validation.
-
-    Methods:
-        dispatch(request: Request, call_next: Any) -> Any:
-            Intercepts the request and checks the validity of the token. If the token
-            is invalid or has exceeded its limit, an error response is returned.
-            Otherwise, it proceeds with the request and returns the response.
     """
 
     def __init__(self, app: ASGIApp):
@@ -40,21 +27,6 @@ class CheckTokenMiddleware(BaseHTTPMiddleware):
         self.excluded_paths = ["/docs", "/openapi.json", "/api_token"]
 
     async def dispatch(self, request: Request, call_next: Any) -> Any:
-        """Processes the request and checks the token validity.
-
-        This method checks if the token is included in the 'Authorization' header,
-        validates the token, and checks its usage limit. If the token is missing or
-        invalid, or if the request limit has been exceeded, an appropriate error response
-        is returned.
-
-        Args:
-            request (Request): The incoming request.
-            call_next (Any): The next ASGI application to call.
-
-        Returns:
-            JSONResponse: A response indicating the result of token validation or
-            the original response if validation is successful.
-        """
         try:
             if any(
                 request.url.path.startswith(path.rstrip("/"))
@@ -67,29 +39,40 @@ class CheckTokenMiddleware(BaseHTTPMiddleware):
                 raise MissingOrBadTokenError
             token = token.split(" ", 1)[1]
 
-            async for db in get_db():
-                token_repo = get_token_repo(db)
+            # Получаем db_connection из состояния приложения
+            db_connection = request.app.state.db_connection
 
-                check_token_in_system = await token_repo.check_token_in_system(token)
-                if not check_token_in_system:
+            async with db_connection.get_session() as session:
+                token_repo = TokenRepo(session)
+
+                token_info = await token_repo.get_token_info_for_validation(token)
+                if not token_info:
                     raise MissingOrBadTokenError
 
-                token_limit, token_last_update = await token_repo.check_token_limit(
-                    token
-                )
-
+                token_limit, token_last_update = token_info
                 current_time = datetime.now(timezone.utc)
-                iso_token_last_update = datetime.fromisoformat(
-                    str(token_last_update)
-                ).replace(tzinfo=timezone.utc)
-                if current_time - iso_token_last_update > timedelta(hours=1):
-                    await token_repo.update_token_limit(token)
-                    await token_repo.decrese_token_limit(token)
-                    await token_repo.update_token_time(token)
-                elif token_limit == 0:
+
+                if token_last_update:
+                    if isinstance(token_last_update, str):
+                        last_update_time = datetime.fromisoformat(
+                            token_last_update
+                        ).replace(tzinfo=timezone.utc)
+                    else:
+                        last_update_time = (
+                            token_last_update.replace(tzinfo=timezone.utc)
+                            if token_last_update.tzinfo is None
+                            else token_last_update
+                        )
+                else:
+                    last_update_time = current_time - timedelta(hours=2)
+
+                if current_time - last_update_time > timedelta(hours=1):
+                    await token_repo.reset_token_limit_and_decrease(token)
+                elif token_limit <= 0:
                     raise TheLimitExceededError
                 else:
-                    await token_repo.decrese_token_limit(token)
+                    await token_repo.decrease_token_limit(token)
+
         except MissingOrBadTokenError:
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -99,6 +82,11 @@ class CheckTokenMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"detail": "The limit of requests exceeded"},
+            )
+        except Exception:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "Internal server error"},
             )
 
         response = await call_next(request)

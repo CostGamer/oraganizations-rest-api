@@ -1,16 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-
-class ApiKey(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    token: str
-    limit: int
-
-
-class Address(BaseModel):
-    address: str
-    office: int
+from .adress_pydantic_models import Address
 
 
 class Organization(BaseModel):

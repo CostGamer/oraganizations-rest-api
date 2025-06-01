@@ -1,122 +1,115 @@
-from fastapi import APIRouter, Depends, Query
+from dishka.integrations.fastapi import FromDishka, inject
+from fastapi import APIRouter
 from pydantic import UUID4
 
-from app.api.dependencies import (
-    get_organization_by_geo,
-    get_organization_by_name_service,
-    get_organization_from_activity,
-    get_organization_from_address,
-    get_organization_from_ancestor_acivity,
-    get_organization_from_id,
-)
-from app.api.responses import (
+from app.api.exception_responses.responses import (
     get_organization_by_id_geo_responses,
     get_organization_by_name_responses,
     get_organizations_by_activity_responses,
     get_organizations_by_address_responses,
 )
-from app.core.pydantic_schemas import Organization
-from app.services.organization_service import (
-    GetOrganizationByIDService,
-    GetOrganizationByNameService,
-    GetOrganizationsFromActivityService,
-    GetOrganizationsFromAddressService,
-    GetOrganizationsFromAncestorActivityService,
-    GetOrganizationsFromGeoService,
+from app.core.models.pydantic_models import Organization
+from app.core.schemas.service_protocols import (
+    GetOrganizationByIDServiceProtocol,
+    GetOrganizationByNameServiceProtocol,
+    GetOrganizationsFromActivityServiceProtocol,
+    GetOrganizationsFromAddressServiceProtocol,
+    GetOrganizationsFromAncestorActivityServiceProtocol,
+    GetOrganizationsFromGeoServiceProtocol,
 )
 
 organization_router = APIRouter()
 
 
 @organization_router.get(
-    "/get_organization_by_name",
+    "/name",
     response_model=Organization,
     responses=get_organization_by_name_responses,
     description="endpoint for getting organization by name",
 )
+@inject
 async def get_organization_by_name(
-    name: str = Query("ООО Рога и Копыта"),
-    organization_by_name_service: GetOrganizationByNameService = Depends(
-        get_organization_by_name_service
-    ),
+    name: str,
+    organization_by_name_service: FromDishka[GetOrganizationByNameServiceProtocol],
 ) -> Organization:
     return await organization_by_name_service(name)
 
 
 @organization_router.get(
-    "/get_organizations_by_address",
+    "/address",
     response_model=list[Organization],
     responses=get_organizations_by_address_responses,
     description="endpoint for getting organizations by address",
 )
+@inject
 async def get_organizations_by_address(
-    city: str = Query("Москва"),
-    street: str = Query("Ленина"),
-    house_num: str = Query("1"),
-    organizations_from_adress_service: GetOrganizationsFromAddressService = Depends(
-        get_organization_from_address
-    ),
+    city: str,
+    street: str,
+    house_num: str,
+    organizations_from_adress_service: FromDishka[
+        GetOrganizationsFromAddressServiceProtocol
+    ],
 ) -> list[Organization]:
     return await organizations_from_adress_service(city, street, house_num)
 
 
 @organization_router.get(
-    "/get_organizations_by_activity",
+    "/activity",
     response_model=list[Organization],
     responses=get_organizations_by_activity_responses,
     description="endpoint for getting organizations by activity",
 )
+@inject
 async def get_organizations_by_activity(
-    activity: str = Query("Еда"),
-    organizations_from_activity_service: GetOrganizationsFromActivityService = Depends(
-        get_organization_from_activity
-    ),
+    activity: str,
+    organizations_from_activity_service: FromDishka[
+        GetOrganizationsFromActivityServiceProtocol
+    ],
 ) -> list[Organization]:
     return await organizations_from_activity_service(activity)
 
 
 @organization_router.get(
-    "/get_organization_by_id",
+    "/id",
     response_model=Organization,
     responses=get_organization_by_id_geo_responses,
     description="endpoint for getting organization by id",
 )
+@inject
 async def get_organization_by_id(
     org_id: UUID4,
-    organization_from_id_service: GetOrganizationByIDService = Depends(
-        get_organization_from_id
-    ),
+    organization_from_id_service: FromDishka[GetOrganizationByIDServiceProtocol],
 ) -> Organization:
     return await organization_from_id_service(org_id)
 
 
 @organization_router.get(
-    "/get_organizations_by_ancestor_activity",
+    "/ancestor/activity",
     response_model=list[Organization],
     responses=get_organizations_by_activity_responses,
     description="endpoint for getting organizations by ancestor activity",
 )
+@inject
 async def get_organizations_by_ancestor_activity(
-    activity: str = Query("Еда"),
-    organizations_from_ancestor_activity_service: GetOrganizationsFromAncestorActivityService = Depends(
-        get_organization_from_ancestor_acivity
-    ),
+    activity: str,
+    organizations_from_ancestor_activity_service: FromDishka[
+        GetOrganizationsFromAncestorActivityServiceProtocol
+    ],
 ) -> list[Organization]:
     return await organizations_from_ancestor_activity_service(activity)
 
 
 @organization_router.get(
-    "/get_organizations_by_geo_location",
+    "/location",
     response_model=list[Organization],
     responses=get_organization_by_id_geo_responses,
     description="endpoint for getting organizations by geo location",
 )
+@inject
 async def get_organizations_by_geo_location(
-    latitute: float = Query(55.7558),
-    longitude: float = Query(37.6176),
-    radius: float = Query(1000),
-    organizations_from_geo_service: GetOrganizationsFromGeoService = Depends(
-        get_organization_by_geo
-    ),
+    latitute: float,
+    longitude: float,
+    radius: float,
+    organizations_from_geo_service: FromDishka[GetOrganizationsFromGeoServiceProtocol],
 ) -> list[Organization]:
     return await organizations_from_geo_service(latitute, longitude, radius)

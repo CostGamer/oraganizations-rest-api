@@ -4,27 +4,9 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_get_organization_by_name(set_auth_headers: AsyncClient) -> None:
-    """Test retrieving an organization by its name.
-
-    Sends a GET request to the '/organization/get_organization_by_name' endpoint
-    with the name of the organization, and verifies that the response contains
-    the correct organization details, including 'activities', 'address',
-    'phones_numbers', and 'name' fields.
-
-    Args:
-        set_auth_headers (AsyncClient): The authenticated client used to make the request.
-
-    Asserts:
-        - Status code 200 is returned.
-        - The response JSON contains the expected fields: 'activities', 'address',
-          'phones_numbers', and 'name'.
-        - The 'name' field matches the provided company name.
-    """
     company_name = {"name": "ООО Рога и Копыта"}
 
-    response = await set_auth_headers.get(
-        "/organization/get_organization_by_name", params=company_name
-    )
+    response = await set_auth_headers.get("/organization/name", params=company_name)
 
     assert response.status_code == 200, (
         f"Expected status code 200, but got {response.status_code}. "
@@ -48,29 +30,9 @@ async def test_get_organization_by_name(set_auth_headers: AsyncClient) -> None:
 # не универсальный тест, т.к. зависит от данных в базе
 @pytest.mark.asyncio
 async def test_get_organizations_by_address(set_auth_headers: AsyncClient) -> None:
-    """Test retrieving organizations by address.
-
-    Sends a GET request to the '/organization/get_organizations_by_address' endpoint
-    with a specific address, and verifies that the response contains a list of
-    organizations, where each organization includes 'name', 'address',
-    'phones_numbers', and 'activities' fields. The number of organizations
-    should also be checked.
-
-    Args:
-        set_auth_headers (AsyncClient): The authenticated client used to make the request.
-
-    Asserts:
-        - Status code 200 is returned.
-        - The response is a list of organizations.
-        - The list contains exactly 3 organizations.
-        - Each organization includes the expected fields: 'name', 'address',
-          'phones_numbers', and 'activities'.
-    """
     org_address = {"city": "Москва", "street": "Ленина", "house_num": "1"}
 
-    response = await set_auth_headers.get(
-        "/organization/get_organizations_by_address", params=org_address
-    )
+    response = await set_auth_headers.get("/organization/address", params=org_address)
 
     assert response.status_code == 200, (
         f"Expected status code 200, but got {response.status_code}. "
