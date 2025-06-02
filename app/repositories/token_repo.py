@@ -51,24 +51,6 @@ class TokenRepo:
         query_res = (await self._con.execute(query)).scalars().all()
         return [ApiKey.model_validate(token_data) for token_data in query_res]
 
-    async def update_limit(self, user_id: UUID4, limit: int = 100) -> None:
-        query = (
-            update(ApiTokens).where(ApiTokens.user_id == user_id).values(limit=limit)
-        )
-        await self._con.execute(query)
-
-    async def check_token_in_system(self, token: str) -> bool:
-        query = select(ApiTokens.id).where(ApiTokens.token == token)
-        query_res = (await self._con.execute(query)).scalar_one_or_none()
-        return query_res is not None
-
-    async def check_token_limit(self, token: str) -> tuple:
-        query = select(ApiTokens.limit, ApiTokens.last_update).where(
-            ApiTokens.token == token
-        )
-        query_res = (await self._con.execute(query)).first()
-        return (query_res.limit, query_res.last_update) if query_res else (0, None)
-
     async def get_token_info_for_validation(
         self, token: str
     ) -> Optional[tuple[int, datetime]]:
@@ -86,18 +68,6 @@ class TokenRepo:
         )
         await self._con.execute(query)
 
-    async def update_token_limit(self, token: str, limit: int = 100) -> None:
-        query = update(ApiTokens).where(ApiTokens.token == token).values(limit=limit)
-        await self._con.execute(query)
-
-    async def update_token_time(self, token: str) -> None:
-        query = (
-            update(ApiTokens)
-            .where(ApiTokens.token == token)
-            .values(last_update=func.now())
-        )
-        await self._con.execute(query)
-
     async def reset_token_limit_and_decrease(
         self, token: str, limit: int = 100
     ) -> None:
@@ -105,13 +75,5 @@ class TokenRepo:
             update(ApiTokens)
             .where(ApiTokens.token == token)
             .values(limit=limit - 1, last_update=func.now())
-        )
-        await self._con.execute(query)
-
-    async def update_token_limit_and_time(self, token: str, limit: int = 100) -> None:
-        query = (
-            update(ApiTokens)
-            .where(ApiTokens.token == token)
-            .values(limit=limit, last_update=func.now())
         )
         await self._con.execute(query)
