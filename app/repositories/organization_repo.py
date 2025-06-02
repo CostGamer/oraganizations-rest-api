@@ -2,7 +2,6 @@ from pydantic import UUID4
 from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models.pydantic_models import Address
 from app.core.models.sqlalchemy_models import (
     Activities,
     ActivityClosure,
@@ -17,58 +16,6 @@ from app.core.models.sqlalchemy_models import (
 class OrganizationRepo:
     def __init__(self, con: AsyncSession) -> None:
         self._con = con
-
-    async def get_organization_id_by_name(self, org_name: str) -> UUID4 | None:
-        query = select(Organizations.id).where(Organizations.name == org_name)
-        query_res = (await self._con.execute(query)).scalar_one_or_none()
-        return query_res
-
-    async def get_organization_phones(self, org_id: UUID4) -> list[str]:
-        query = (
-            select(Phones.phone_number)
-            .join(OrganizationPhones)
-            .where(OrganizationPhones.organization_id == org_id)
-        )
-        query_res = (await self._con.execute(query)).scalars().all()
-        return list(query_res)
-
-    async def get_organization_activities(self, org_id: UUID4) -> list[str]:
-        query = (
-            select(Activities.name)
-            .join(OrganizationActivities)
-            .where(OrganizationActivities.organization_id == org_id)
-        )
-        query_res = (await self._con.execute(query)).scalars().all()
-        return list(query_res)
-
-    async def get_organization_address(self, org_id: UUID4) -> Address:
-        query = (
-            select(Buildings.address, Buildings.office)
-            .join(Organizations)
-            .where(Organizations.id == org_id)
-        )
-        query_res = (await self._con.execute(query)).one()
-
-        address_data = {
-            "address": query_res[0],
-            "office": query_res[1],
-        }
-
-        return Address.model_validate(address_data)
-
-    async def check_address_exists(self, address: str) -> bool:
-        query = select(Buildings.id).where(Buildings.address == address).limit(1)
-        query_res = (await self._con.execute(query)).scalar_one_or_none()
-        return query_res is not None
-
-    async def get_all_organizations_from_address(self, address: str) -> list[str]:
-        query = (
-            select(Organizations.name)
-            .join(Buildings)
-            .where(Buildings.address == address)
-        )
-        query_res = (await self._con.execute(query)).scalars().all()
-        return list(query_res)
 
     async def check_activity_exists(self, activity: str) -> bool:
         query = select(Activities.id).where(Activities.name == activity).limit(1)
@@ -89,18 +36,6 @@ class OrganizationRepo:
         query = select(Organizations.name).where(Organizations.id == org_id)
         query_res = (await self._con.execute(query)).scalar_one_or_none()
         return query_res
-
-    async def get_all_activities_from_ancestor(self, ancestor_name: str) -> list[str]:
-        query = (
-            select(distinct(Activities.name))
-            .join(ActivityClosure, ActivityClosure.descendant_id == Activities.id)
-            .where(
-                ActivityClosure.ancestor_id
-                == (select(Activities.id).where(Activities.name == ancestor_name))
-            )
-        )
-        query_res = (await self._con.execute(query)).scalars().all()
-        return list(query_res)
 
     async def get_organizations_within_radius(
         self, latitude: float, longitude: float, radius: float
@@ -193,9 +128,6 @@ class OrganizationRepo:
             }
             for result in results
         ]
-
-    async def build_address_string(self, city: str, street: str, house_num: str) -> str:
-        return f"{city}, {street}, {house_num}"
 
     async def get_organizations_by_address_parts(
         self, city: str, street: str, house_num: str

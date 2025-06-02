@@ -28,15 +28,6 @@ class TokenRepoProtocol(Protocol):
     async def get_all_tokens(self, login: str) -> list[ApiKey]:
         pass
 
-    async def update_limit(self, user_id: UUID4, limit: int = 100) -> None:
-        pass
-
-    async def check_token_in_system(self, token: str) -> bool:
-        pass
-
-    async def check_token_limit(self, token: str) -> tuple:
-        pass
-
     async def get_token_info_for_validation(
         self, token: str
     ) -> Optional[tuple[int, datetime]]:
@@ -45,16 +36,7 @@ class TokenRepoProtocol(Protocol):
     async def decrease_token_limit(self, token: str) -> None:
         pass
 
-    async def update_token_limit(self, token: str, limit: int = 100) -> None:
-        pass
-
-    async def update_token_time(self, token: str) -> None:
-        pass
-
     async def reset_token_limit_and_decrease(
         self, token: str, limit: int = 100
     ) -> None:
-        pass
-
-    async def update_token_limit_and_time(self, token: str, limit: int = 100) -> None:
         pass
